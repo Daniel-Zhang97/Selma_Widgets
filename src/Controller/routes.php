@@ -25,46 +25,45 @@ class routes extends AbstractController
             if ($request !== null) {
                 $filterOptionsJSON = $request->getContent();
                 $decodedOptions = json_decode($filterOptionsJSON, true);
-                $res = $this->getInvoiceLines($decodedOptions);
-                if ($decodedOptions['groupBy'] == 'Yearly') {
-                    ksort($res);
+                if($decodedOptions && $decodedOptions['generateReport'] && $decodedOptions['generateReport'] === true) {
+                    $res = $this->generateRevenueStatement();
+                } else if (!$decodedOptions || !$decodedOptions['groupBy']) {
+                    return new Response('no');
                 } else {
+                    $res = $this->getInvoiceLines($decodedOptions);
 
-                    $monthsOrder = [
-                        'Jan' => 1, 'Feb' => 2, 'Mar' => 3, 'Apr' => 4, 'May' => 5, 'Jun' => 6,
-                        'Jul' => 7, 'Aug' => 8, 'Sep' => 9, 'Oct' => 10, 'Nov' => 11, 'Dec' => 12
-                    ];
-                    $quartersOrder = [
-                        'Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4
-                    ];
+                    if ($decodedOptions['groupBy'] == 'Yearly') {
+                        ksort($res);
+                    } else {
 
-                    uksort($res, function($a, $b) use ($quartersOrder, $monthsOrder, $decodedOptions) {
-                        $yearA = substr($a, 0, 4);
-                        $yearB = substr($b, 0, 4);
+                        $monthsOrder = [
+                            'Jan' => 1, 'Feb' => 2, 'Mar' => 3, 'Apr' => 4, 'May' => 5, 'Jun' => 6,
+                            'Jul' => 7, 'Aug' => 8, 'Sep' => 9, 'Oct' => 10, 'Nov' => 11, 'Dec' => 12
+                        ];
+                        $quartersOrder = [
+                            'Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4
+                        ];
 
-                        if ($yearA != $yearB) {
-                            return $yearA - $yearB;
-                        } else {
-                            $groupA = substr($a, 5);
-                            $groupB = substr($b, 5);
-                            if ($decodedOptions['groupBy'] === 'Quarterly') {
-                                return $quartersOrder[$groupA] - $quartersOrder[$groupB];
+                        uksort($res, function($a, $b) use ($quartersOrder, $monthsOrder, $decodedOptions) {
+                            $yearA = substr($a, 0, 4);
+                            $yearB = substr($b, 0, 4);
+
+                            if ($yearA != $yearB) {
+                                return $yearA - $yearB;
                             } else {
-                                $monthA = $groupA;
-                                $monthB = $groupB;
-                                return $monthsOrder[$monthA] - $monthsOrder[$monthB];
+                                $groupA = substr($a, 5);
+                                $groupB = substr($b, 5);
+                                if ($decodedOptions['groupBy'] === 'Quarterly') {
+                                    return $quartersOrder[$groupA] - $quartersOrder[$groupB];
+                                } else {
+                                    $monthA = $groupA;
+                                    $monthB = $groupB;
+                                    return $monthsOrder[$monthA] - $monthsOrder[$monthB];
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
-
-                if ($decodedOptions === null) {
-                    // Handle JSON decoding error
-                    return new Response('Error decoding filterOptions JSON');
-                }
-
-            } else {
-                return new Response('no');
             }
 
         return new Response(json_encode($res));
@@ -72,49 +71,59 @@ class routes extends AbstractController
 
     private function getInvoiceLines($decodedOptions = null): array
     {
-
+        $res = [];
         if($decodedOptions !== null) {
 
             $startDate = $decodedOptions['startDate'];
             $endDate = $decodedOptions['endDate'];
 
-            $stmt = $this->pdo->prepare('SELECT * FROM invoice_line WHERE due_date >= :start_date AND due_date <= :end_date');
+            $stmt = $this->pdo->prepare('SELECT * FROM invoice_header WHERE due_date >= :start_date AND due_date <= :end_date');
             $stmt->bindParam(':start_date', $startDate, \PDO::PARAM_STR);
             $stmt->bindParam(':end_date', $endDate, \PDO::PARAM_STR);
             $stmt->execute();
-            $invoice_lines = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $invoice_header = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-//            $stmt = $this->pdo->prepare('SELECT * FROM enrolment');
-//            $stmt->execute();
-//            $enrolment = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $res = $this->creatBarChart($invoice_lines, $decodedOptions);
+            $res = $this->creatBarChart($invoice_header, $decodedOptions);
         }
 
         return $res;
     }
 
-    private function creatBarChart($lines, $options = null) {
+    private function creatBarChart($invoice_header, $options = null) {
         $currentDate = date('Y-m-d');
         $graphData = [];
 
-        foreach ($lines as $line) {
+        foreach ($invoice_header as $line) {
             $groupKey = $this->getGroupKey($line['due_date'], $options['groupBy']);
+
+            $getInvoiceLines = $this->pdo->prepare('SELECT * FROM invoice_line WHERE invoice_header_number = ?');
+            $getInvoiceLines->bindParam(1, $line['invoice_header_number']);
+            $getInvoiceLines->execute();
+            $invoice_lines = $getInvoiceLines->fetchAll(PDO::FETCH_ASSOC);
+            $totalPaid = 0;
+
+            foreach ($invoice_lines as $invoice_line) {
+                $totalPaid += $invoice_line['amount'];
+            }
 
             if (!isset($graphData[$groupKey])) {
                 $graphData[$groupKey] = [
                     'Collected' => 0,
                     'Uncollected' => 0,
                     'Overdue' => 0,
+                    'Overpaid' => 0,
                 ];
             }
 
-            if ($line['is_paid'] === 1 && $options['Collected']) {
-                $graphData[$groupKey]['Collected'] += $line['amount'];
-            } elseif ($line['due_date'] < $currentDate && $line['is_paid'] == 0 && $options['Overdue']) {
-                $graphData[$groupKey]['Overdue'] += $line['amount'];
-            } elseif ($line['due_date'] > $currentDate && $line['is_paid'] == 0 && $options['Uncollected']) {
-                $graphData[$groupKey]['Uncollected'] += $line['amount'];
+            if ($line['amount_due'] <= $totalPaid && $options['Collected']) {
+                $graphData[$groupKey]['Collected'] += $line['amount_due'];
+                $graphData[$groupKey]['Overpaid'] += $totalPaid - $line['amount_due'];
+            } elseif ($line['due_date'] < $currentDate && $options['Overdue']) {
+                $graphData[$groupKey]['Collected'] += $totalPaid;
+                $graphData[$groupKey]['Overdue'] += $line['amount_due'] - $totalPaid;
+            } elseif ($line['due_date'] > $currentDate && $options['Uncollected']) {
+                $graphData[$groupKey]['Collected'] += $totalPaid;
+                $graphData[$groupKey]['Uncollected'] += $line['amount_due'] - $totalPaid;
             }
         }
 
@@ -135,5 +144,9 @@ class routes extends AbstractController
         }
     }
 
+    private function generateRevenueStatement($decodedOptions = null) {
+
+        return 'working';
+    }
 
 }
