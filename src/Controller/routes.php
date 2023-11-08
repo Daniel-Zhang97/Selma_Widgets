@@ -115,14 +115,16 @@ class routes extends AbstractController
                 ];
             }
 
-            if ($line['amount_due'] <= $totalPaid && $options['Collected']) {
-                $graphData[$groupKey]['Collected'] += $line['amount_due'];
+            if ($line['amount_due'] <= $totalPaid) {
+                if ($options['Collected']) {
+                    $graphData[$groupKey]['Collected'] += $line['amount_due'];
+                }
                 if($options['Overpaid']){
-                    $graphData[$groupKey]['Overpaid'] += $totalPaid - $line['amount_due'];
+                    $graphData[$groupKey]['Overpaid'] -= $totalPaid - $line['amount_due'];
                 }
             } elseif ($line['due_date'] < $currentDate && $options['Overdue']) {
                 $graphData[$groupKey]['Collected'] += $totalPaid;
-                $graphData[$groupKey]['Overdue'] += $line['amount_due'] - $totalPaid;
+                $graphData[$groupKey]['Overdue'] -= $line['amount_due'] - $totalPaid;
             } elseif ($line['due_date'] > $currentDate && $options['Uncollected']) {
                 $graphData[$groupKey]['Collected'] += $totalPaid;
                 $graphData[$groupKey]['Uncollected'] += $line['amount_due'] - $totalPaid;
