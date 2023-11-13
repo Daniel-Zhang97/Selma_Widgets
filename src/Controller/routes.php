@@ -153,7 +153,6 @@ class routes extends AbstractController
         $endDate = $decodedOptions['endDate'];
         $res = [];
 
-        // Fetch data using JOIN to retrieve information from multiple tables
         $stmt = $this->pdo->prepare('
         SELECT
             s.student_id,
@@ -214,7 +213,6 @@ class routes extends AbstractController
                 $res[$studentId]['enrolments'][$enrolmentNumber]['invoice_headers'][$headerNumber]['line_items'][$lineItemNumber]['amount'] = $row['line_item_amount'];
             }
 
-            // Subtract line item amount from the balance
             $res[$studentId]['enrolments'][$enrolmentNumber]['invoice_headers'][$headerNumber]['balance'] -= $row['line_item_amount'];
         }
 
