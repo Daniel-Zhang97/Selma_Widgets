@@ -7,16 +7,17 @@ require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 //$pdo = new PDO('mysql:dbname=selma_db;host=localhost;port=3306', 'root', null);
 
 //    Seeding students table
-//    for ($i = 1; $i <= 200; $i++) {
+//    for($i = 1; $i <= 200; $i++) {
 //        $student_first_name = $faker->firstName;
 //        $student_surname = $faker->lastName;
 //        $student_bank_account = $faker->regexify('[0-9]{16}');
 //
 //        $stmt = $pdo->prepare("INSERT INTO student (student_first_name, student_surname, student_bank_account) VALUES (?, ?, ?)");
 //        $stmt->execute([$student_first_name, $student_surname, $student_bank_account]);
-
+//    }
+//
 //    Seeding enrolment table
-
+//
 //    for ($i = 1; $i <= 200; $i++) {
 //        $date = $faker->dateTimeBetween('-8 years', '+0 year');
 //        $randStudent = rand(0, 199);
@@ -31,10 +32,10 @@ require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 //        $stmt->execute([$date->format('Y-m-d H-i-s'), $studentId]);
 //
 //    }
-
-
+//
+//
 //    seeding invoice_header table
-
+//
 //for ($i = 0; $i < 200; $i++) {
 //    $date = $faker->dateTimeBetween('-8 years', '+2 year');
 //    $getId = $pdo->prepare('SELECT * FROM enrolment LIMIT 1 OFFSET ?');
@@ -53,10 +54,10 @@ require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 //    $stmt->execute([$studentId, $date->format('Y-m-d H-i-s'), $enrolment_number, $amountDue]);
 //
 //}
-
+//
 //
 ////      Seeding invoice_line table
-
+//
 //
 //for ($i = 0; $i < 400; $i++) {
 //    $enrolmentSelector = rand(0, 399);
@@ -89,7 +90,7 @@ require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 //$rows = $results->fetchAll();
 //var_dump($rows);
 //die;
-//
+
 return function (array $context) {
     return new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
 };

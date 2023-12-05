@@ -5,11 +5,8 @@ namespace App\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
-use Faker\Factory;
 use PDO;
 use Symfony\Component\Routing\Annotation\Route;
-use Twig\Error\Error;
-use const http\Client\Curl\POSTREDIR_301;
 
 class routes extends AbstractController
 {
@@ -166,7 +163,7 @@ class routes extends AbstractController
             il.invoice_line_number,
             il.payment_date,
             il.amount AS line_item_amount
-        FROM student s
+        FROM student S
         LEFT JOIN enrolment e ON s.student_id = e.student_id
         LEFT JOIN invoice_header ih ON e.enrolment_number = ih.enrolment_number
         LEFT JOIN invoice_line il ON ih.invoice_header_number = il.invoice_header_number
@@ -215,12 +212,9 @@ class routes extends AbstractController
 
             $res[$studentId]['enrolments'][$enrolmentNumber]['invoice_headers'][$headerNumber]['balance'] -= $row['line_item_amount'];
         }
-
         return array_values($res);
+
     }
-
-
-
 }
 
 
